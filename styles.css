@@ -1,0 +1,39 @@
+/* styles.css */
+
+/* Reset / base */
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+  background-color: #f9f9f9;
+  color: #111;
+}
+
+/* Buttons */
+.button-primary {
+  background-color: #dc2626;
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.button-primary:hover {
+  background-color: #b91c1c;
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 1rem;
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220,38,38,0.3);
+}
