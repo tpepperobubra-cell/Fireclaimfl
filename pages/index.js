@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Phone, Home, Users2, Building2, ShieldCheck, Star, MapPin, CheckCircle2, FileText, BookOpen, HelpCircle, MessageCircle } from "lucide-react";
-import './styles.css';
+import 'pages/styles.css';
 
 // ====== Business Constants ======
 const BRAND = "FireClaimsFL";
