@@ -484,7 +484,7 @@ export default function FireClaimsFL() {
 
   return (
     <div id="home" className="min-h-screen">
-      <style jsx>{`
+      <style jsx global>{`
         /* Global Reset and Base Styles */
         * {
           box-sizing: border-box;
