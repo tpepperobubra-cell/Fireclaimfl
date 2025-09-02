@@ -1,0 +1,100 @@
+// scripts/generate-keywords.js
+const fs = require("fs");
+const path = require("path");
+
+// ========== 1) Core non-geo topics ==========
+const nonGeo = [
+  "what to do after a house fire florida",
+  "who to call after house fire florida",
+  "after a fire checklist florida",
+  "replace documents after fire florida",
+  "red cross help after fire florida",
+  "is it safe to stay in house after small fire florida",
+  "emergency housing after fire florida",
+  "hotel tonight after house fire florida",
+  "how to file a fire insurance claim florida",
+  "fire insurance claim process florida",
+  "first notice of loss fire claim florida",
+  "how long do insurance companies have to pay a fire claim florida",
+  "fire claim timeline florida",
+  "denied fire claim what now florida",
+  "underpaid fire claim florida",
+  "how to talk to insurance adjuster after fire florida",
+  "public adjuster fire claim near me",
+  // ... add the remaining ~80 topics
+];
+
+// ========== 2) City list ==========
+const cities = [
+  "orlando","miami","tampa","jacksonville","fort lauderdale","st petersburg",
+  "west palm beach","fort myers","clearwater","pensacola","daytona beach",
+  "kissimmee","gainesville","sarasota","ocala","lakeland","tallahassee",
+  "palm bay","port st lucie","cape coral"
+];
+
+// ========== 3) Base patterns ==========
+const baseCityPatterns = [
+  "house fire insurance claim {city} florida",
+  "public adjuster fire claim {city} florida",
+  "apartment fire hotel coverage {city} florida",
+  "smoke damage insurance claim {city} florida",
+  "fire claim denied {city} florida",
+  "does insurance pay for hotel after fire {city} florida",
+  "how to file a fire insurance claim {city} florida",
+  "appraisal clause fire claim {city} florida"
+];
+
+// ========== 4) Modifiers ==========
+const modifiers = [
+  "near me","today","checklist","timeline","how long","sample letter","form"
+];
+
+// ========== 5) Carrier + city combos ==========
+const carriers = ["citizens","state farm","universal property and casualty","slide insurance","tower hill"];
+
+// ---------- Expanders ----------
+function expandCities(patterns, cityList) {
+  const out = [];
+  for (const p of patterns) {
+    for (const c of cityList) {
+      out.push(p.replace("{city}", c));
+    }
+  }
+  return out;
+}
+
+function addModifiers(baseList, mods) {
+  const out = [];
+  for (const b of baseList) {
+    for (const m of mods) out.push(`${b} ${m}`);
+  }
+  return out;
+}
+
+function carrierCityCombos(cityList, brands) {
+  const out = [];
+  for (const c of cityList) {
+    for (const brand of brands) out.push(`${brand} fire claim ${c} florida`);
+  }
+  return out;
+}
+
+// ---------- Build the full list ----------
+const geoExpanded = expandCities(baseCityPatterns, cities);
+const geoWithModifiers = addModifiers(geoExpanded, modifiers);
+const carrierGeo = carrierCityCombos(cities, carriers);
+
+// Merge & de-duplicate
+const topics = Array.from(new Set([
+  ...nonGeo,
+  ...geoExpanded,
+  ...geoWithModifiers,
+  ...carrierGeo,
+]));
+
+// ---------- Save to JSON ----------
+const outputPath = path.join(__dirname, "../keywords.json");
+fs.writeFileSync(outputPath, JSON.stringify(topics, null, 2));
+
+console.log(`✅ Keywords generated: ${topics.length}`);
+console.log(`Saved to ${outputPath}`);
