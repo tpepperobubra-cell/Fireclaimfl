@@ -3,17 +3,17 @@ name: Generate Blog Posts
 on:
   schedule:
     - cron: "0 12 * * *" # every day at noon UTC
-  workflow_dispatch:       # allow manual trigger
+  workflow_dispatch:
 
 jobs:
-  generate-blog:
+  generate:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -26,12 +26,15 @@ jobs:
             npm install
           fi
 
+      - name: Generate keywords
+        run: npm run generate-keywords
+
       - name: Generate blog posts
-        run: npm run generate-blog
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run generate-blog
 
-      - name: Commit and push generated posts
+      - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
