@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "generate-keywords": "node scripts/build-keywords.js",
     "generate-blog": "node scripts/generate-blog.js"
   },
   "dependencies": {
@@ -14,9 +15,6 @@
     "react-dom": "^18.2.0",
     "lucide-react": "^0.258.0",
     "framer-motion": "^10.12.16",
-    "openai": "^4.8.0" 
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "openai": "^4.10.0"
   }
 }
