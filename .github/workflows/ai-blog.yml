@@ -30,7 +30,7 @@ jobs:
         run: npm install
 
       - name: Clean working directory
-        run: git clean -fdx -e blog/ -e keywords.json
+        run: git clean -fdx -e posts/ -e keywords.json
 
       - name: Generate keywords
         run: npm run generate-keywords
@@ -57,7 +57,7 @@ jobs:
           git reset node_modules package-lock.json || echo "No node_modules or package-lock.json to reset"
 
           # Add generated files
-          git add blog/ keywords.json
+          git add posts/ keywords.json
           git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]" || echo "No changes to commit"
 
           # Retry logic with stash and rebase
@@ -82,7 +82,7 @@ jobs:
             git reset node_modules package-lock.json || echo "No node_modules or package-lock.json to reset"
             
             # Re-add and recommit
-            git add blog/ keywords.json
+            git add posts/ keywords.json
             git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]" || echo "No changes to commit"
             
             # Try to push
