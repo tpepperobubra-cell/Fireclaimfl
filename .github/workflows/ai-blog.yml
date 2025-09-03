@@ -2,7 +2,7 @@ name: Generate Blog Posts
 
 on:
   schedule:
-    - cron: "0 12 * * *" # every day at noon UTC
+    - cron: "0 12 * * *"  # every day at noon UTC
   workflow_dispatch:
 
 permissions:
@@ -14,44 +14,64 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      # 1️⃣ Checkout the repo
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
+          fetch-depth: 0  # full history
 
+      # 2️⃣ Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
-      - name: Install dependencies (ignore lock file)
+      # 3️⃣ Install dependencies (ignore lock file)
+      - name: Install dependencies
         run: npm install || true
 
+      # 4️⃣ Ensure posts directory exists
+      - name: Create posts folder
+        run: mkdir -p posts
+
+      # 5️⃣ Generate keywords
       - name: Generate keywords
         run: node scripts/generate-keywords.js
 
+      # 6️⃣ Generate blog posts
       - name: Generate blog posts
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          mkdir -p posts
+          echo "Generating 3 posts..."
           for i in {1..3}; do
             node scripts/generate-blog.js
           done
 
+      # 7️⃣ Check for changes
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      # 8️⃣ Commit and push changes
       - name: Commit and push changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Force-add posts and keywords
+          
+          # Force-add posts folder and keywords
           git add -f posts/ keywords.json
-
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
-            git pull --rebase origin ${{ github.ref_name }} || git pull origin ${{ github.ref_name }}
-            git push origin HEAD:${{ github.ref_name }}
-          fi
+          git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
+          
+          # Pull latest changes with rebase to avoid push conflicts
+          git pull --rebase origin ${{ github.ref_name }} || git pull origin ${{ github.ref_name }}
+          
+          # Push
+          git push origin HEAD:${{ github.ref_name }}
