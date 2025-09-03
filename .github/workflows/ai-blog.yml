@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # allow pushing changes
+  contents: write
 
 jobs:
   generate:
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # use repo token
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -43,8 +43,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Only commit blog posts + keywords.json
-          git add -f blog/ keywords.json
-          
+          # Only commit blog/ and keywords.json, nothing else
+          git add blog/ keywords.json || echo "Nothing to add"
           git commit -m "Auto-generate blog posts [skip ci]" || echo "No changes to commit"
           git push
