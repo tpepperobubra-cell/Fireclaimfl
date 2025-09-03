@@ -3,61 +3,61 @@ name: Generate Blog Posts
 on:
   schedule:
     - cron: "0 12 * * *" # every day at noon UTC
-  workflow_dispatch:
+  workflow_dispatch:       # allow manual run
 
 permissions:
-  contents: write
-  actions: read
+  contents: write          # allow pushing changes
 
 jobs:
   generate:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1 - Checkout repo
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0  # full history for git ops
+          fetch-depth: 0
 
+      # Step 2 - Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: "npm"
 
+      # Step 3 - Install dependencies
       - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+        run: npm install
 
+      # Step 4 - Generate keywords (optional)
       - name: Generate keywords
-        run: npm run generate-keywords
+        run: npm run generate-keywords || echo "No keyword script found"
 
+      # Step 5 - Generate blog posts
       - name: Generate blog posts
-        run: npm run generate-blog
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run generate-blog
 
+      # Step 6 - Check for changes
       - name: Check for changes
         id: verify-changed-files
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
+          if [ -n "$(git status --porcelain blog keywords.json)" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
           else
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
+      # Step 7 - Commit and push changes
       - name: Commit and push changes
         if: steps.verify-changed-files.outputs.changed == 'true'
         run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add blog/ keywords.json
-          git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
-
-          git pull --rebase origin ${{ github.ref_name }} || git pull origin ${{ github.ref_name }}
-          git push origin HEAD:${{ github.ref_name }}
+          git commit -m "Auto-generate blog posts [skip ci]" || echo "No changes"
+          git pull --rebase origin main || true
+          git push origin HEAD:main
