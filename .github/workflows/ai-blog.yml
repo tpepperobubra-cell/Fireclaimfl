@@ -2,42 +2,79 @@ name: Generate Blog Posts
 
 on:
   schedule:
-    - cron: "0 0 * * *" # run daily at midnight UTC
-  workflow_dispatch: # allow manual trigger
+    - cron: "0 12 * * *" # every day at noon UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
 
 jobs:
   generate:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repository
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up Node.js
+      # 2️⃣ Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache-dependency-path: "**/package.json" # avoids lockfile error
+          cache: npm
 
+      # 3️⃣ Install dependencies
       - name: Install dependencies
-        run: npm install
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
+      # 4️⃣ Generate keywords if missing
+      - name: Generate keywords
+        run: |
+          if [ ! -f keywords.json ]; then
+            node scripts/generate-keywords.js
+          else
+            echo "✅ keywords.json already exists"
+          fi
+
+      # 5️⃣ Generate blog posts
       - name: Generate blog posts
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: npm run generate-blog
-
-      - name: Check for changes
         run: |
-          if git diff --quiet; then
-            echo "No changes to commit"
-            exit 0
+          mkdir -p posts
+          node scripts/generate-blog.js
+
+      # 6️⃣ Check for changes
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
           fi
 
+      # 7️⃣ Commit & push only if changes exist
       - name: Commit and push changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add blog/
-          git commit -m "📝 Auto-generate blog post"
-          git push
+
+          [ -f keywords.json ] && git add keywords.json
+          [ -d posts ] && git add posts/
+
+          git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]" || echo "No changes to commit"
+
+          # Pull latest changes to avoid push conflicts
+          git pull --rebase origin ${{ github.ref_name }} || git pull origin ${{ github.ref_name }}
+          git push origin HEAD:${{ github.ref_name }}
