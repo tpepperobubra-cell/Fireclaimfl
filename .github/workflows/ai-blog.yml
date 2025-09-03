@@ -2,7 +2,7 @@ name: Generate Blog Posts
 
 on:
   schedule:
-    - cron: "0 12 * * *" # Every day at noon UTC
+    - cron: "0 12 * * *" # runs every day at noon UTC
   workflow_dispatch:
 
 permissions:
@@ -18,46 +18,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up Node.js
-      - name: Set up Node.js
+      # 2️⃣ Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: '20'
+          cache: 'npm'
 
       # 3️⃣ Install dependencies
       - name: Install dependencies
         run: npm ci
 
-      # 4️⃣ Clean working directory (ignore posts and keywords)
-      - name: Clean working directory
-        run: git clean -fdx -e posts/ -e keywords.json
-
-      # 5️⃣ Generate keywords
+      # 4️⃣ Generate keywords
       - name: Generate keywords
         run: node scripts/generate-keywords.js
 
-      # 6️⃣ Generate blog posts
+      # 5️⃣ Generate blog posts
       - name: Generate blog posts
         run: node scripts/generate-blog.js
 
-      # 7️⃣ Commit & push only generated content
-      - name: Commit and push generated content
+      # 6️⃣ Commit and push generated posts
+      - name: Commit and push generated posts
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Only add generated files
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add posts/ keywords.json
-
-          # Check for changes
-          if ! git diff-index --quiet HEAD; then
-            # Fetch remote and rebase
-            git fetch origin ${{ github.ref_name }}
-            git rebase origin/${{ github.ref_name }} || git rebase --abort
-
-            # Commit and push
-            git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
-          else
-            echo "No changes to commit"
-          fi
+          git commit -m "Auto-generate blog posts [skip ci]" || echo "No changes to commit"
+          git pull --rebase origin main
+          git push origin main
