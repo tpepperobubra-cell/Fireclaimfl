@@ -27,7 +27,7 @@ jobs:
           cache: 'npm'  # Cache npm dependencies
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Generate keywords
         run: npm run generate-keywords
@@ -49,6 +49,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Reset unintended files
+          git reset node_modules package-lock.json || echo "No node_modules or package-lock.json to reset"
 
           # Add generated files
           git add blog/ keywords.json
@@ -72,7 +75,10 @@ jobs:
             # Reapply stashed changes
             git stash pop || echo "No stash to pop"
             
-            # Re-add and recommit in case stash modified the index
+            # Reset unintended files again
+            git reset node_modules package-lock.json || echo "No node_modules or package-lock.json to reset"
+            
+            # Re-add and recommit
             git add blog/ keywords.json
             git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]" || echo "No changes to commit"
             
