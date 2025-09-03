@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -27,8 +27,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          npm install
+        run: npm install
 
       - name: Generate keywords
         run: node scripts/generate-keywords.js
@@ -36,7 +35,14 @@ jobs:
       - name: Generate blog posts
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: node scripts/generate-blog.js
+        run: |
+          # Create posts directory if it doesn't exist
+          mkdir -p posts
+
+          # Generate 3 posts per run
+          for i in {1..3}; do
+            node scripts/generate-blog.js
+          done
 
       - name: Check for changes
         id: changes
@@ -46,19 +52,17 @@ jobs:
           else
             echo "changed=false" >> $GITHUB_OUTPUT
 
-      - name: Commit and push
+      - name: Commit and push changes
         if: steps.changes.outputs.changed == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Force-add posts/ even if .gitignore ignores it
+          # Force-add posts/ and keywords.json
           git add -f posts/ keywords.json
 
           git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]" || echo "No changes to commit"
 
-          # Pull latest changes to avoid push rejection
           git pull --rebase origin ${{ github.ref_name }} || git pull origin ${{ github.ref_name }}
 
-          # Push changes
           git push origin HEAD:${{ github.ref_name }}
