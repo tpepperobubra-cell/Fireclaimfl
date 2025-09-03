@@ -41,6 +41,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
+          
+          # Force add blog posts and keywords.json even if in .gitignore
+          git add -f blog/ keywords.json
+          
           git commit -m "Auto-generate blog posts [skip ci]" || echo "No changes to commit"
           git push
