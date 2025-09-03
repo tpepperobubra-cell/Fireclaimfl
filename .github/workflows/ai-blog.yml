@@ -2,7 +2,7 @@ name: Generate Blog Posts
 
 on:
   schedule:
-    - cron: "0 12 * * *"  # every day at noon UTC
+    - cron: "0 12 * * *" # Every day at noon UTC
   workflow_dispatch:
 
 permissions:
@@ -14,58 +14,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install dependencies (ignore lock file)
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+          rm -f package-lock.json
+          npm install
 
       - name: Generate keywords
-        run: |
-          node scripts/generate-keywords.js
-        # ensure your keywords script writes keywords.json in the repo root
+        run: npm run generate-keywords
 
-      - name: Generate blog post
-        run: |
-          node scripts/generate-blog.js
+      - name: Generate blog posts
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npm run generate-blog
 
-      - name: List generated posts
-        run: ls -l posts/
-
-      - name: Configure git
+      - name: Add generated posts
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f posts/ keywords.json
 
-      - name: Add generated files
-        run: git add -f posts/ keywords.json
-
-      - name: Check for changes
-        id: verify-changed-files
+      - name: Commit & push changes
         run: |
           if [ -n "$(git status --porcelain)" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
+            git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
           else
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes to commit"
           fi
-
-      - name: Commit and push
-        if: steps.verify-changed-files.outputs.changed == 'true'
-        run: |
-          git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
-          git push
