@@ -14,67 +14,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # 2️⃣ Set up Node.js
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      # 3️⃣ Install dependencies
       - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+        run: npm install
 
-      # 4️⃣ Generate keywords if missing
       - name: Generate keywords
-        run: |
-          if [ ! -f keywords.json ]; then
-            node scripts/generate-keywords.js
-          else
-            echo "✅ keywords.json already exists"
-          fi
+        run: node scripts/generate-keywords.js
 
-      # 5️⃣ Generate blog posts
-      - name: Generate blog posts
+      - name: Generate blog post
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          mkdir -p posts
-          node scripts/generate-blog.js
+        run: node scripts/generate-blog.js
 
-      # 6️⃣ Check for changes
-      - name: Check for changes
-        id: verify-changed-files
+      - name: Check for new posts
+        id: check_changes
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-          else
+          git add posts/
+          if git diff --cached --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      # 7️⃣ Commit & push only if changes exist
-      - name: Commit and push changes
-        if: steps.verify-changed-files.outputs.changed == 'true'
+      - name: Commit and push new posts
+        if: steps.check_changes.outputs.changed == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          [ -f keywords.json ] && git add keywords.json
-          [ -d posts ] && git add posts/
-
-          git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]" || echo "No changes to commit"
-
-          # Pull latest changes to avoid push conflicts
-          git pull --rebase origin ${{ github.ref_name }} || git pull origin ${{ github.ref_name }}
-          git push origin HEAD:${{ github.ref_name }}
+          git commit -m "Auto-generated blog post $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
+          git push
