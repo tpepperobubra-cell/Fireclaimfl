@@ -26,6 +26,13 @@ Thumbs.db
 *.idea/
 .vscode/
 
+
+node_modules/
+package-lock.json
+.next/
+out/
+dist/
+
 # === Lock files (keep dependencies reproducible in CI, but ignore in commits) ===
 package-lock.json
 yarn.lock
