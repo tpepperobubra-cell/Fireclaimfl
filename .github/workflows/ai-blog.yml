@@ -1,4 +1,4 @@
-name: Generate Blog Posts Safely
+name: Generate Blog Posts
 
 on:
   schedule:
@@ -17,22 +17,16 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
+          fetch-depth: 0  # Fetch full history for git operations
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install dependencies
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+          npm install
 
       - name: Generate keywords
         run: npm run generate-keywords
@@ -40,26 +34,28 @@ jobs:
       - name: Generate blog posts
         run: npm run generate-blog
 
-      - name: Commit generated content
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
+          # Only add generated files, not node_modules
           git add blog/ keywords.json
-          git diff --staged --quiet || git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
 
-      - name: Push to temporary branch
-        if: success()
-        run: |
-          TEMP_BRANCH="blog-gen-temp-$(date +%s)"
-          git checkout -b $TEMP_BRANCH
-          git push origin $TEMP_BRANCH
+          git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]" || echo "No changes to commit"
 
-      - name: Merge into main safely
-        if: success()
-        run: |
-          TEMP_BRANCH="blog-gen-temp-$(date +%s)"
-          git fetch origin main
-          git checkout main
-          git merge --no-ff $TEMP_BRANCH -m "Merge auto-generated blog posts [skip ci]"
-          git push origin main
+          # Pull latest remote changes first
+          git pull --rebase origin ${{ github.ref_name }} || git pull origin ${{ github.ref_name }}
+
+          # Try to push
+          git push origin HEAD:${{ github.ref_name }}
