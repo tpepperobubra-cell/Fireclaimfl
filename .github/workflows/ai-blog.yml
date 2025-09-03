@@ -1,4 +1,4 @@
-name: Generate Blog Posts
+name: Generate Blog Posts Safely
 
 on:
   schedule:
@@ -14,21 +14,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0  # Fetch full history
+          fetch-depth: 0
 
-      # 2️⃣ Setup Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then
@@ -37,29 +34,32 @@ jobs:
             npm install
           fi
 
-      # 4️⃣ Clean old generated posts
-      - name: Clean old blog posts
-        run: rm -rf blog/*
-
-      # 5️⃣ Generate keywords
       - name: Generate keywords
         run: npm run generate-keywords
 
-      # 6️⃣ Generate blog posts
       - name: Generate blog posts
         run: npm run generate-blog
 
-      # 7️⃣ Commit and force push changes
-      - name: Commit and force push changes
+      - name: Commit generated content
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Add only the generated files, never node_modules
           git add blog/ keywords.json
-
-          # Commit if there are changes
           git diff --staged --quiet || git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
 
-          # Force push to overwrite remote changes safely
-          git push origin HEAD:${{ github.ref_name }} --force
+      - name: Push to temporary branch
+        if: success()
+        run: |
+          TEMP_BRANCH="blog-gen-temp-$(date +%s)"
+          git checkout -b $TEMP_BRANCH
+          git push origin $TEMP_BRANCH
+
+      - name: Merge into main safely
+        if: success()
+        run: |
+          TEMP_BRANCH="blog-gen-temp-$(date +%s)"
+          git fetch origin main
+          git checkout main
+          git merge --no-ff $TEMP_BRANCH -m "Merge auto-generated blog posts [skip ci]"
+          git push origin main
