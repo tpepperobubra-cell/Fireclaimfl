@@ -38,5 +38,3 @@ keywords.json
 # Ignore generated posts cache if any
 blog-cache/
 
-# Ignore generated posts folder locally if you prefer GitHub Actions to commit them
-posts/
