@@ -17,21 +17,29 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch full history for git operations
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install dependencies
         run: |
-          npm install
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       - name: Generate keywords
         run: npm run generate-keywords
 
       - name: Generate blog posts
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }} # <-- important
         run: npm run generate-blog
 
       - name: Check for changes
@@ -48,14 +56,9 @@ jobs:
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Only add generated files, not node_modules
+          
           git add blog/ keywords.json
-
-          git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]" || echo "No changes to commit"
-
-          # Pull latest remote changes first
+          git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
+          
           git pull --rebase origin ${{ github.ref_name }} || git pull origin ${{ github.ref_name }}
-
-          # Try to push
           git push origin HEAD:${{ github.ref_name }}
