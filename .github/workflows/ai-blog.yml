@@ -2,7 +2,7 @@ name: Generate Blog Posts
 
 on:
   schedule:
-    - cron: "0 12 * * *" # Every day at noon UTC
+    - cron: "0 12 * * *" # every day at noon UTC
   workflow_dispatch:
 
 permissions:
@@ -24,31 +24,41 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
-      - name: Install dependencies (ignore lock file)
+      - name: Install dependencies
         run: |
-          rm -f package-lock.json
           npm install
 
       - name: Generate keywords
-        run: npm run generate-keywords
+        run: node scripts/generate-keywords.js
 
       - name: Generate blog posts
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: npm run generate-blog
+        run: node scripts/generate-blog.js
 
-      - name: Add generated posts
+      - name: Check for changes
+        id: changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Force-add posts/ even if .gitignore ignores it
           git add -f posts/ keywords.json
 
-      - name: Commit & push changes
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
-          else
-            echo "No changes to commit"
-          fi
+          git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]" || echo "No changes to commit"
+
+          # Pull latest changes to avoid push rejection
+          git pull --rebase origin ${{ github.ref_name }} || git pull origin ${{ github.ref_name }}
+
+          # Push changes
+          git push origin HEAD:${{ github.ref_name }}
