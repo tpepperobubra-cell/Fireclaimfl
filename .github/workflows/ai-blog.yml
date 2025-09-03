@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'none'  # Disable cache since no lock file exists
 
       - name: Install dependencies
         run: npm install
@@ -36,18 +35,22 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: node scripts/generate-blog.js
 
+      - name: List generated posts
+        run: |
+          echo "📄 Generated posts:"
+          ls -1 posts/ || echo "No posts found"
+
       - name: Commit and push changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Force add posts folder
+
+          # Force add posts folder and keywords.json
           git add -f posts/ keywords.json
-          
+
           # Only commit if changes exist
           if ! git diff --cached --quiet; then
             git commit -m "Auto-generate blog posts $(date +'%Y-%m-%d %H:%M:%S UTC') [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           else
             echo "No changes to commit"
-          fi
